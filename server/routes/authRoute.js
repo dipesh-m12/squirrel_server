@@ -147,7 +147,11 @@ authRouter.post("/login", async (req, res) => {
     );
 
     // Set the cookie with the JWT token
-    res.cookie("token", token, { httpOnly: false, secure: false }); // secure: true in production
+    res.cookie("token", token, {
+      httpOnly: false,
+      secure: true,
+      sameSite: "none",
+    }); // secure: true in production
 
     // Respond with success
     return res.status(200).json({
