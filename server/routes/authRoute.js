@@ -238,7 +238,7 @@ authRouter.post("/logout", (req, res) => {
   // Clear the cookie
   res.clearCookie("token", {
     path: "/",
-    domain: "squirrel-server-t2qw.vercel.app", // Use the same domain if it was set initially
+    // domain: "squirrel-server-t2qw.vercel.app", // Use the same domain if it was set initially
     sameSite: "None", // Ensure this matches what you set
     secure: true,
   }); // Ensure the path matches what was set
