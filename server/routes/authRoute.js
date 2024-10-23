@@ -91,7 +91,16 @@ authRouter.post("/register", async (req, res) => {
     );
 
     // Set the cookie with the JWT token
-    res.cookie("token", token, { httpOnly: false, secure: false }); // secure: true in production
+    res.cookie("token", token, {
+      httpOnly: false,
+      secure: false,
+      httpOnly: false,
+      secure: true,
+      sameSite: "none",
+      partitioned: true,
+      domain: "https://squirrel-server-t2qw.vercel.app",
+      maxAge: 6 * 24 * 60 * 60 * 1000,
+    }); // secure: true in production
 
     // Respond with success
     return res.status(201).json({
@@ -227,7 +236,12 @@ authRouter.get("/auto-login", async (req, res) => {
 
 authRouter.post("/logout", (req, res) => {
   // Clear the cookie
-  res.clearCookie("token", { path: "/" }); // Ensure the path matches what was set
+  res.clearCookie("token", {
+    path: "/",
+    domain: "squirrel-server-t2qw.vercel.app", // Use the same domain if it was set initially
+    sameSite: "None", // Ensure this matches what you set
+    secure: true,
+  }); // Ensure the path matches what was set
   return res.status(200).json({
     status: 200,
     success: true,
