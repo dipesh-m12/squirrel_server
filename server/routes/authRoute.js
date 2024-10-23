@@ -93,7 +93,7 @@ authRouter.post("/register", async (req, res) => {
     // Set the cookie with the JWT token
     res.cookie("token", token, {
       httpOnly: false,
-      secure: false,
+      secure: true,
       sameSite: "none",
       partitioned: true,
       // domain: "https://squirrel-server-t2qw.vercel.app",
