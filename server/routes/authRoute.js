@@ -151,6 +151,7 @@ authRouter.post("/login", async (req, res) => {
       httpOnly: false,
       secure: true,
       sameSite: "none",
+      maxAge: 6 * 24 * 60 * 60 * 1000,
     }); // secure: true in production
 
     // Respond with success

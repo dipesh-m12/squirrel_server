@@ -27,7 +27,7 @@ mongoose
 
 app.use(
   cors({
-    origin: ["http://localhost:3000"], // Replace with your specific origin if needed
+    origin:true, // Replace with your specific origin if needed
     credentials: true,
   })
 );
