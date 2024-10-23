@@ -24,6 +24,10 @@
       "dest": "index.js"
     },
     {
+      "src": "/api/(.*)",
+      "dest": "index.js"
+    },
+    {
       "src": "/api/patent/(.*)",
       "dest": "index.js"
     },
