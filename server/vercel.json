@@ -8,8 +8,32 @@
   ],
   "routes": [
     {
+      "src": "/upload",
+      "dest": "index.js"
+    },
+    {
+      "src": "/api/auth/(.*)",
+      "dest": "index.js"
+    },
+    {
+      "src": "/api/profile/(.*)",
+      "dest": "index.js"
+    },
+    {
+      "src": "/api/subscribe/(.*)",
+      "dest": "index.js"
+    },
+    {
+      "src": "/api/patent/(.*)",
+      "dest": "index.js"
+    },
+    {
+      "src": "/api/interaction/(.*)",
+      "dest": "index.js"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/"
+      "dest": "index.js"
     }
   ]
 }
