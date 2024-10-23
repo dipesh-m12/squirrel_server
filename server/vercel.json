@@ -37,7 +37,7 @@
     }
   ],
   "env": {
-    "PORT": 5000,
+    "PORT": "5000",
     "MONGO_URL": "mongodb+srv://mavinash422:UzMGoenKJCPbpsCt@cluster0.didhh.mongodb.net/production?retryWrites=true&w=majority&appName=Cluster0",
     "AWS_ACCESS_KEY_ID": "AKIA2UC3D7AU565OYCIQ",
     "AWS_SECRET_ACCESS_KEY": "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",
