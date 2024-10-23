@@ -160,7 +160,7 @@ authRouter.post("/login", async (req, res) => {
       httpOnly: false,
       secure: true,
       sameSite: "none",
-      // partitioned: true,
+      partitioned: true,
       domain: "https://squirrel-server-t2qw.vercel.app",
       maxAge: 6 * 24 * 60 * 60 * 1000,
     }); // secure: true in production
@@ -238,7 +238,7 @@ authRouter.post("/logout", (req, res) => {
   // Clear the cookie
   res.clearCookie("token", {
     path: "/",
-    // domain: "squirrel-server-t2qw.vercel.app", // Use the same domain if it was set initially
+    domain: "squirrel-server-t2qw.vercel.app", // Use the same domain if it was set initially
     sameSite: "None", // Ensure this matches what you set
     secure: true,
   }); // Ensure the path matches what was set
