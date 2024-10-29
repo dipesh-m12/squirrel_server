@@ -78,7 +78,7 @@ const patentSchema = new mongoose.Schema(
     id: {
       type: String,
       // required: true,
-      unique: true,
+      // unique: true,
     },
     pdf: {
       type: String,
