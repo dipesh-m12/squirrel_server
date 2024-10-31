@@ -27,6 +27,7 @@ patentRouter.post("/add-patent", async (req, res) => {
     patentType,
     id, // Added this field
     verified, // Added this field
+    patentImages,
   } = req.body;
 
   try {
@@ -62,6 +63,7 @@ patentRouter.post("/add-patent", async (req, res) => {
       sector,
       usedTech,
       pdf,
+      patentImages,
       patentId: uuidv4(),
       transactionType,
       patentType,

@@ -8,6 +8,7 @@ const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const multer = require("multer"); // For handling file uploads
 const fs = require("fs");
 const path = require("path");
+const emailController = require("./controllers/emailController");
 
 const rateLimit = require("express-rate-limit");
 const mongoose = require("mongoose");
@@ -27,7 +28,7 @@ mongoose
 
 app.use(
   cors({
-    origin:true, // Replace with your specific origin if needed
+    origin: true, // Replace with your specific origin if needed
     credentials: true,
   })
 );
@@ -96,6 +97,21 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: `Failed to upload file: ${err.message}` });
+  }
+});
+
+app.post("/api/email", async (req, res) => {
+  try {
+    const { to, templateName, templateData, options } = req.body;
+    const result = await emailController.sendTemplateEmail(
+      to,
+      templateName,
+      templateData,
+      options
+    );
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
