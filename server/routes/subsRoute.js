@@ -1,7 +1,7 @@
 const express = require("express");
 const subsRouter = express.Router();
 const Subscription = require("../models/subscriptionModel"); // Adjust the path as needed
-
+const emailController = require("../controllers/emailController");
 // Route to store user details and email
 subsRouter.post("/", async (req, res) => {
   const { firstname, lastname, orgname, mobile, message, email } = req.body;
@@ -40,6 +40,25 @@ subsRouter.post("/", async (req, res) => {
 
     // Save the entry to the database
     const savedEntry = await newEntry.save();
+
+    // Send confirmation email
+    try {
+      await emailController.sendTemplateEmail(
+        email,
+        "subscriptionConfirmation",
+        {
+          userName: `${firstname} ${lastname}`,
+          email: {
+            plan: "Standard Subscription", // You can modify this based on your subscription types
+            organization: orgname,
+            name: `${firstname} ${lastname}`,
+          },
+        }
+      );
+    } catch (emailError) {
+      console.error("Failed to send confirmation email:", emailError);
+      // Note: We don't return here as the subscription was still successful
+    }
 
     // Respond with success
     return res.status(201).json({

@@ -67,13 +67,7 @@ const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Subscription Confirmed</h2>
-        <p>Thank you for subscribing to our ${subscriptionDetails.plan} plan!</p>
-        <p>Subscription Details:</p>
-        <ul>
-          <li>Plan: ${subscriptionDetails.plan}</li>
-          <li>Duration: ${subscriptionDetails.duration}</li>
-          <li>Start Date: ${subscriptionDetails.startDate}</li>
-        </ul>
+        <p>Thank you for subscribing to our plan!</p>
         <br/>
         <p>Best regards,</p>
         <p>The Squirrel IP Team</p>

@@ -319,4 +319,79 @@ patentRouter.get("/get-all-patents", async (req, res) => {
   }
 });
 
+patentRouter.delete("/delete-patent/:patentId", async (req, res) => {
+  try {
+    const { patentId } = req.params;
+    console.log(patentId);
+
+    // Verify token existence
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({
+        status: 401,
+        success: false,
+        error: true,
+        message: "No token found, please log in again",
+      });
+    }
+
+    // Verify and decode token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "squirrelIP");
+    const userId = decoded.userId;
+
+    // Find the patent
+    const patent = await Patent.findOne({ patentId });
+
+    // Check if patent exists
+    if (!patent) {
+      return res.status(404).json({
+        status: 404,
+        success: false,
+        error: true,
+        message: "Patent not found",
+      });
+    }
+
+    // Verify ownership
+    if (patent.userId !== userId) {
+      return res.status(403).json({
+        status: 403,
+        success: false,
+        error: true,
+        message:
+          "Unauthorized: You don't have permission to delete this patent",
+      });
+    }
+
+    // Delete the patent
+    await Patent.findOneAndDelete({ patentId });
+
+    return res.status(200).json({
+      status: 200,
+      success: true,
+      error: false,
+      message: "Patent deleted successfully",
+    });
+  } catch (error) {
+    // Handle token verification errors specifically
+    if (error instanceof jwt.JsonWebTokenError) {
+      return res.status(401).json({
+        status: 401,
+        success: false,
+        error: true,
+        message: "Invalid token, please log in again",
+      });
+    }
+
+    // Handle other errors
+    return res.status(500).json({
+      status: 500,
+      success: false,
+      error: true,
+      message: "Failed to delete patent",
+      data: error.message,
+    });
+  }
+});
+
 module.exports = patentRouter;
