@@ -45,7 +45,7 @@ subsRouter.post("/", async (req, res) => {
     try {
       await emailController.sendTemplateEmail(
         email,
-        "subscriptionConfirmation",
+        "Registration Confirmation",
         {
           userName: `${firstname} ${lastname}`,
           email: {
@@ -55,6 +55,26 @@ subsRouter.post("/", async (req, res) => {
           },
         }
       );
+
+      // Send notification email to admin
+      await emailController.sendCustomEmail({
+        to: "Squirreliptech@gmail.com",
+        subject: "New Subscription Request",
+        body: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>New Subscription Request</h2>
+            <p>${firstname} ${lastname} has submitted a new request.</p>
+            <p>Contact Email: ${email}</p>
+            <p>Message:</p>
+            <p style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${message}</p>
+            <h3>Additional Details:</h3>
+            <ul>
+              <li>Organization: ${orgname}</li>
+              <li>Mobile: ${mobile}</li>
+            </ul>
+          </div>
+        `,
+      });
     } catch (emailError) {
       console.error("Failed to send confirmation email:", emailError);
       // Note: We don't return here as the subscription was still successful

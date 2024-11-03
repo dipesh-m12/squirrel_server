@@ -66,8 +66,8 @@ const emailTemplates = {
     subject: "Subscription Confirmation",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Subscription Confirmed</h2>
-        <p>Thank you for subscribing to our plan!</p>
+        <h2>Registration Confirmed</h2>
+        <p>Thank you for submitting your request, we will get back to you shortly</p>
         <br/>
         <p>Best regards,</p>
         <p>The Squirrel IP Team</p>
