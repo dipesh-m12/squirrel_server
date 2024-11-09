@@ -3,6 +3,9 @@ const patentRouter = express.Router();
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
 const Patent = require("../models/patentModel");
+const Wishlist = require("../models/wishlistModel");
+const Impression = require("../models/impressionsModel");
+const Enquiry = require("../models/enquiryModel");
 
 patentRouter.post("/add-patent", async (req, res) => {
   const {
@@ -365,6 +368,11 @@ patentRouter.delete("/delete-patent/:patentId", async (req, res) => {
 
     // Delete the patent
     await Patent.findOneAndDelete({ patentId });
+
+    // Delete related enquiries, wishlists, and impressions
+    await Enquiry.deleteMany({ "patentDetails.patentId": patentId });
+    await Wishlist.deleteMany({ "patentDetails.patentId": patentId });
+    await Impression.deleteMany({ "patentDetails.patentId": patentId });
 
     return res.status(200).json({
       status: 200,
