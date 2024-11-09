@@ -45,11 +45,11 @@ subsRouter.post("/", async (req, res) => {
     try {
       await emailController.sendTemplateEmail(
         email,
-        "Registration Confirmation",
+        "subscriptionConfirmation", // Corrected template name
         {
           userName: `${firstname} ${lastname}`,
           email: {
-            plan: "Standard Subscription", // You can modify this based on your subscription types
+            plan: "Standard Subscription", // Customize as needed
             organization: orgname,
             name: `${firstname} ${lastname}`,
           },
