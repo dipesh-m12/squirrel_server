@@ -74,6 +74,26 @@ const emailTemplates = {
       </div>
     `,
   }),
+
+  enquiryConfirmation: (templateData) => ({
+    subject: "Enquiry Raised Regarding Your Patent",
+    html: `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>Enquiry Raised Regarding Your Patent</h2>
+      <p>Hello,</p>
+      <p>We wanted to inform you that an enquiry has been raised regarding your patent:</p>
+      <ul>
+        <li>Patent Title: ${templateData.title}</li>
+        <li>Patent Number: ${templateData.patentNumber}</li>
+        <li>Enquirer: ${templateData.enquirerName}</li>
+      </ul>
+      <p>The enquiry is being reviewed, and we will provide you with further details shortly. Thank you for your attention.</p>
+      <br/>
+      <p>Best regards,</p>
+      <p>The Squirrel IP Team</p>
+    </div>
+  `,
+  }),
 };
 
 // Validate email
@@ -100,8 +120,7 @@ const emailController = {
         throw new Error("Invalid template name");
       }
 
-      const template = emailTemplates[templateName](templateData.userName);
-
+      const template = emailTemplates[templateName](templateData);
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to,

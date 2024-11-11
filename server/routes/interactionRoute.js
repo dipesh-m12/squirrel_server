@@ -4,6 +4,7 @@ const Wishlist = require("../models/wishlistModel");
 const Impression = require("../models/impressionsModel");
 const Enquiry = require("../models/enquiryModel");
 const jwt = require("jsonwebtoken");
+const emailController = require("../controllers/emailController");
 
 // Wishlist Route: Toggle Wishlist status
 intRouter.post("/wishlist", async (req, res) => {
@@ -98,6 +99,15 @@ intRouter.post("/enquiry", async (req, res) => {
   try {
     const { from, to, patentDetails } = req.body;
 
+    // Check if all necessary fields are provided
+    if (!from || !to || !patentDetails) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        message: "Missing required fields (from, to, or patentDetails).",
+      });
+    }
+
     let enquiryEntry = await Enquiry.findOne({
       "from.userId": from.userId,
       "to.userId": to.userId,
@@ -119,7 +129,7 @@ intRouter.post("/enquiry", async (req, res) => {
 
     const savedEnquiry = await enquiryEntry.save();
 
-    return res.status(201).json({
+    res.status(201).json({
       status: 201,
       success: true,
       message: `Enquiry ${
@@ -127,6 +137,69 @@ intRouter.post("/enquiry", async (req, res) => {
       } successfully`,
       data: savedEnquiry,
     });
+    try {
+      // Send the email notification (use the 'enquiryConfirmation' template)
+      await emailController.sendTemplateEmail(
+        to.email, // Send to the patent owner
+        "enquiryConfirmation",
+        {
+          patentNumber: patentDetails.patentNumber,
+          title: patentDetails.title,
+          enquirerName: `${from.firstName} ${from.lastName}`,
+        }
+      );
+
+      await emailController.sendCustomEmail({
+        to: "Squirreliptech@gmail.com", // Replace with the maintainer's email
+        subject: "New Enquiry Raised Regarding Patent",
+        body: `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>New Enquiry Raised Regarding Patent</h2>
+      
+      <p><strong>Enquirer Details:</strong></p>
+      <ul>
+        <li><strong>Name:</strong> ${from.firstName} ${from.lastName}</li>
+        <li><strong>Email:</strong> ${from.email}</li>
+        <li><strong>Mobile:</strong> ${from.mobile}</li>
+      </ul>
+
+      <p><strong>Patent Details:</strong></p>
+      <ul>
+        <li><strong>Title:</strong> ${patentDetails.title}</li>
+        <li><strong>Patent Number:</strong> ${patentDetails.patentNumber}</li>
+        <li><strong>Application Number:</strong> ${
+          patentDetails.applicationNumber
+        }</li>
+        <li><strong>Used Technology:</strong> ${patentDetails.usedTech}</li>
+        <li><strong>Sector:</strong> ${patentDetails.sector}</li>
+        <li><strong>Patent ID:</strong> ${patentDetails.patentId}</li>
+      </ul>
+
+      <p><strong>Patent Owner Details:</strong></p>
+      <ul>
+        <li><strong>Name:</strong> ${to.firstName} ${to.lastName}</li>
+        <li><strong>Email:</strong> ${to.email}</li>
+        <li><strong>Mobile:</strong> ${to.mobile}</li>
+      </ul>
+
+      <p><strong>Enquiry Details:</strong></p>
+      <ul>
+      
+        <li><strong>Enquiry Raised On:</strong> ${new Date().toLocaleString()}</li>
+      </ul>
+
+      <p><strong>Next Steps:</strong> Please review the enquiry and get in touch with the enquirer if needed. You may also contact the patent owner for further details.</p>
+      
+      <br/>
+      <p>Best regards,</p>
+      <p>The Squirrel IP Team</p>
+    </div>
+  `,
+      });
+    } catch (emailError) {
+      console.error("Failed to send confirmation email:", emailError);
+      // Note: We don't return here as the subscription was still successful
+    }
   } catch (error) {
     return res.status(500).json({
       status: 500,
