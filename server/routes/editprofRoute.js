@@ -6,7 +6,8 @@ const Wishlist = require("../models/wishlistModel");
 const Impression = require("../models/impressionsModel");
 const Enquiry = require("../models/enquiryModel");
 const Patent = require("../models/patentModel");
-
+const emailController = require("../controllers/emailController");
+const bcrypt = require("bcrypt");
 // Update user details route
 userRouter.put("/update", async (req, res) => {
   // Retrieve the token from the cookie
@@ -123,6 +124,136 @@ userRouter.delete("/delete-user", async (req, res) => {
       success: false,
       error: true,
       message: "Failed to delete user",
+      data: error.message,
+    });
+  }
+});
+
+userRouter.post("/send-recovery-email", async (req, res) => {
+  const { email } = req.body;
+
+  // Validate email format (basic validation)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({
+      status: 400,
+      success: false,
+      error: true,
+      message: "Invalid email format",
+    });
+  }
+
+  try {
+    // Find the user in the database by email
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        status: 404,
+        success: false,
+        error: true,
+        message: "User not found",
+      });
+    }
+
+    const { userId } = user;
+
+    // Send a custom email with a warning message
+    await emailController.sendCustomEmail({
+      to: email,
+      subject: "Password Recovery Instructions - Team Squirrel IP",
+      body: `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 10px;">
+      <h2 style="color: #333;">Password Recovery</h2>
+      <p>Dear User,</p>
+      <p>We received a request to reset your password for your account with Team Squirrel IP.</p>
+      <p>To reset your password, please click the link below:</p>
+      <p>
+        <a href="http://localhost:5000?userId=${userId
+          .split("")
+          .reverse()
+          .join(
+            ""
+          )}" style="color: #007BFF; text-decoration: none; font-weight: bold;">
+          Reset My Password
+        </a>
+      </p>
+      <p><strong>Important:</strong> Please do not share your recovery code or this email with anyone. If you did not request this change, please ignore this email or contact our support team immediately.</p>
+      <p>Thank you,</p>
+      <p><em>Team Squirrel IP</em></p>
+    </div>
+  `,
+    });
+
+    return res.status(200).json({
+      status: 200,
+      success: true,
+      error: false,
+      message: "Email sent successfully",
+    });
+  } catch (error) {
+    console.error("Error sending email:", error);
+    return res.status(500).json({
+      status: 500,
+      success: false,
+      error: true,
+      message: "Failed to send email",
+      data: error.message,
+    });
+  }
+});
+
+userRouter.put("/update-password", async (req, res) => {
+  const { userId, password } = req.body;
+
+  if (!userId || !password) {
+    return res.status(400).json({
+      status: 400,
+      success: false,
+      error: true,
+      message: "UserId and password are required",
+    });
+  }
+
+  try {
+    // Reverse the userId
+    const reversedUserId = userId
+      .split("")
+      .reverse()
+      .join("");
+
+    // Hash the new password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Update the user's password using the reversed userId
+    const updatedUser = await User.findOneAndUpdate(
+      { userId: reversedUserId },
+      { $set: { password: hashedPassword } },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        status: 404,
+        success: false,
+        error: true,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      success: true,
+      error: false,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      success: false,
+      error: true,
+      message: "Failed to update password",
       data: error.message,
     });
   }
