@@ -8,6 +8,121 @@ const Enquiry = require("../models/enquiryModel");
 const Patent = require("../models/patentModel");
 const emailController = require("../controllers/emailController");
 const bcrypt = require("bcrypt");
+const multer = require("multer");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+require("dotenv").config();
+// Configure multer for multiple files
+const upload = multer();
+
+// Configure S3 Client
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
+// Utility function to upload file to S3
+const uploadFileToS3 = async (file, folder) => {
+  if (!file) return null;
+
+  const fileName = `${folder}/${Date.now()}_${file.originalname}`;
+  const uploadParams = {
+    Bucket: process.env.AWS_BUCKET_NAME,
+    Key: fileName,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+  };
+
+  await s3Client.send(new PutObjectCommand(uploadParams));
+  return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+};
+
+// Update user profile route with file uploads
+userRouter.put(
+  "/update-profile",
+  upload.fields([
+    { name: "avatar", maxCount: 1 },
+    { name: "orgLogo", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    // Token validation
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({
+        status: 401,
+        success: false,
+        error: true,
+        message: "No token found, please log in again",
+      });
+    }
+
+    try {
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || "squirrelIP");
+      const userId = decoded.userId;
+
+      // Handle file uploads
+      const updateData = { ...req.body };
+
+      // Upload avatar if provided
+      if (req.files?.avatar?.[0]) {
+        const avatarUrl = await uploadFileToS3(req.files.avatar[0], "avatars");
+        if (avatarUrl) {
+          updateData.avatar = avatarUrl;
+          // console.log(avatarUrl);
+        }
+      }
+
+      // Upload org logo if provided
+      if (req.files?.orgLogo?.[0]) {
+        const orgLogoUrl = await uploadFileToS3(
+          req.files.orgLogo[0],
+          "org-logos"
+        );
+        if (orgLogoUrl) {
+          updateData.orgLogo = orgLogoUrl;
+        }
+      }
+
+      // Update user data including file URLs
+      const updatedUser = await User.findOneAndUpdate(
+        { userId },
+        { $set: updateData },
+        { new: true, runValidators: true }
+      ).select("-password"); // Exclude password from response
+
+      if (!updatedUser) {
+        return res.status(404).json({
+          status: 404,
+          success: false,
+          error: true,
+          message: "User not found",
+        });
+      }
+
+      // Success response
+      return res.status(200).json({
+        status: 200,
+        success: true,
+        error: false,
+        message: "Profile updated successfully",
+        data: updatedUser,
+      });
+    } catch (error) {
+      // Error handling
+      return res.status(500).json({
+        status: 500,
+        success: false,
+        error: true,
+        message: "Failed to update profile",
+        data: error.message,
+      });
+    }
+  }
+);
+
 // Update user details route
 userRouter.put("/update", async (req, res) => {
   // Retrieve the token from the cookie
@@ -217,10 +332,7 @@ userRouter.put("/update-password", async (req, res) => {
 
   try {
     // Reverse the userId
-    const reversedUserId = userId
-      .split("")
-      .reverse()
-      .join("");
+    const reversedUserId = userId.split("").reverse().join("");
 
     // Hash the new password
     const saltRounds = 10;

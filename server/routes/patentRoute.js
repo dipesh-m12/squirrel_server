@@ -6,6 +6,169 @@ const Patent = require("../models/patentModel");
 const Wishlist = require("../models/wishlistModel");
 const Impression = require("../models/impressionsModel");
 const Enquiry = require("../models/enquiryModel");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+require("dotenv").config();
+const multer = require("multer");
+
+// AWS S3 Configuration
+const AWS_BUCKET_NAME = process.env.AWS_BUCKET_NAME;
+const REGION = process.env.AWS_REGION;
+const s3Client = new S3Client({
+  region: REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+const upload = multer();
+
+// Route to Handle Patent Submission
+patentRouter.post(
+  "/create-patent",
+  upload.fields([
+    { name: "pdf", maxCount: 1 },
+    { name: "images", maxCount: 10 },
+  ]),
+  async (req, res) => {
+    const {
+      firstName,
+      lastName,
+      mobile,
+      email,
+      state,
+      city,
+      coauthors,
+      org,
+      title,
+      grantDate,
+      filingDate,
+      patentNumber,
+      applicationNumber,
+      abstract,
+      sector,
+      usedTech,
+      transactionType,
+      patentType,
+    } = req.body;
+
+    const files = req.files;
+    const pdfFile = files?.pdf?.[0];
+    const imageFiles = files?.images || [];
+
+    if (!pdfFile) {
+      return res.status(400).json({ message: "PDF file is required." });
+    }
+    if (!imageFiles.length) {
+      return res
+        .status(400)
+        .json({ message: "At least one image is required." });
+    }
+
+    try {
+      const token = req.cookies.token;
+      if (!token) {
+        return res.status(401).json({
+          status: 401,
+          success: false,
+          error: true,
+          message: "No token found, please log in again",
+        });
+      }
+
+      let userId;
+      try {
+        const decoded = jwt.verify(
+          token,
+          process.env.JWT_SECRET || "squirrelIP"
+        );
+        userId = decoded.userId;
+      } catch (err) {
+        return res.status(401).json({
+          status: 401,
+          success: false,
+          error: true,
+          message: "Invalid or expired token. Please log in again.",
+        });
+      }
+
+      // Upload files to S3
+      const pdfFileName = `patents/pdf/${Date.now()}_${pdfFile.originalname}`;
+      const pdfUploadParams = {
+        Bucket: AWS_BUCKET_NAME,
+        Key: pdfFileName,
+        Body: pdfFile.buffer,
+        ContentType: pdfFile.mimetype,
+      };
+      const pdfUrl = await s3Client
+        .send(new PutObjectCommand(pdfUploadParams))
+        .then(
+          () =>
+            `https://${AWS_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${pdfFileName}`
+        );
+
+      const imageUrls = await Promise.all(
+        imageFiles.map(async (image) => {
+          const imageFileName = `patents/images/${Date.now()}_${
+            image.originalname
+          }`;
+          const imageUploadParams = {
+            Bucket: AWS_BUCKET_NAME,
+            Key: imageFileName,
+            Body: image.buffer,
+            ContentType: image.mimetype,
+          };
+          await s3Client.send(new PutObjectCommand(imageUploadParams));
+          return `https://${AWS_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${imageFileName}`;
+        })
+      );
+
+      const newPatent = new Patent({
+        userId,
+        firstName,
+        lastName,
+        mobile,
+        email,
+        state,
+        city,
+        coauthors: coauthors || "",
+        org: org || "",
+        title,
+        grantDate: new Date(grantDate),
+        filingDate: new Date(filingDate),
+        patentNumber,
+        applicationNumber,
+        abstract,
+        sector,
+        usedTech,
+        transactionType,
+        patentType,
+        pdf: pdfUrl,
+        patentImages: imageUrls,
+        patentId: uuidv4(),
+        verified: false,
+      });
+
+      const savedPatent = await newPatent.save();
+
+      return res.status(201).json({
+        status: 201,
+        success: true,
+        error: false,
+        message: "Patent submitted successfully.",
+        data: { savedPatent, pdfUrl, imageUrls },
+      });
+    } catch (error) {
+      console.error("Error submitting patent:", error);
+      return res.status(500).json({
+        status: 500,
+        success: false,
+        error: true,
+        message: "Failed to submit patent.",
+        data: error.message,
+      });
+    }
+  }
+);
 
 patentRouter.post("/add-patent", async (req, res) => {
   const {
@@ -325,7 +488,6 @@ patentRouter.get("/get-all-patents", async (req, res) => {
 patentRouter.delete("/delete-patent/:patentId", async (req, res) => {
   try {
     const { patentId } = req.params;
-    console.log(patentId);
 
     // Verify token existence
     const token = req.cookies.token;
@@ -342,32 +504,16 @@ patentRouter.delete("/delete-patent/:patentId", async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "squirrelIP");
     const userId = decoded.userId;
 
-    // Find the patent
-    const patent = await Patent.findOne({ patentId });
-
-    // Check if patent exists
+    // Find and delete the patent in one step, ensuring ownership
+    const patent = await Patent.findOneAndDelete({ patentId, userId });
     if (!patent) {
       return res.status(404).json({
         status: 404,
         success: false,
         error: true,
-        message: "Patent not found",
+        message: "Patent not found or you don't have permission to delete it",
       });
     }
-
-    // Verify ownership
-    if (patent.userId !== userId) {
-      return res.status(403).json({
-        status: 403,
-        success: false,
-        error: true,
-        message:
-          "Unauthorized: You don't have permission to delete this patent",
-      });
-    }
-
-    // Delete the patent
-    await Patent.findOneAndDelete({ patentId });
 
     // Delete related enquiries, wishlists, and impressions
     await Enquiry.deleteMany({ "patentDetails.patentId": patentId });
@@ -392,6 +538,7 @@ patentRouter.delete("/delete-patent/:patentId", async (req, res) => {
     }
 
     // Handle other errors
+    console.error("Error deleting patent:", error);
     return res.status(500).json({
       status: 500,
       success: false,

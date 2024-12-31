@@ -5,6 +5,7 @@ const Impression = require("../models/impressionsModel");
 const Enquiry = require("../models/enquiryModel");
 const jwt = require("jsonwebtoken");
 const emailController = require("../controllers/emailController");
+const Patent = require("../models/patentModel");
 
 // Wishlist Route: Toggle Wishlist status
 intRouter.post("/wishlist", async (req, res) => {
@@ -216,6 +217,72 @@ const getUserIdFromCookie = (req) => {
   return req.cookies.token;
 };
 
+// all - interactions   _-used currently for profile page
+intRouter.get("/all-interactions", async (req, res) => {
+  try {
+    const token = getUserIdFromCookie(req);
+    if (!token) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        message: "User ID not found in cookies",
+      });
+    }
+
+    // Decode the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "squirrelIP");
+    const userId = decoded.userId;
+
+    // Use Promise.all to fetch both sent and received data concurrently
+    const [
+      sentWishlistItems,
+      sentEnquiryItems,
+      sentImpressionItems,
+      receivedWishlistItems,
+      receivedEnquiryItems,
+      receivedImpressionItems,
+      userPatents,
+    ] = await Promise.all([
+      Wishlist.find({ "from.userId": userId, wishlist: true }),
+      Enquiry.find({ "from.userId": userId, enquire: true }),
+      Impression.find({ "from.userId": userId, impression: true }),
+      Wishlist.find({ "to.userId": userId, wishlist: true }),
+      Enquiry.find({ "to.userId": userId, enquire: true }),
+      Impression.find({ "to.userId": userId, impression: true }),
+      Patent.find({ userId }),
+    ]);
+
+    // Extract patent IDs from results
+
+    // Return combined response
+    return res.status(200).json({
+      status: 200,
+      success: true,
+      message: "All interactions data fetched successfully",
+      data: {
+        sent: {
+          wishlist: sentWishlistItems,
+          enquiry: sentEnquiryItems,
+          impressions: sentImpressionItems,
+        },
+        received: {
+          wishlist: receivedWishlistItems,
+          enquiry: receivedEnquiryItems,
+          impressions: receivedImpressionItems,
+        },
+        userPatents,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      success: false,
+      message: "Failed to fetch interactions data",
+      error: error.message,
+    });
+  }
+});
+
 intRouter.get("/wishlist", async (req, res) => {
   try {
     const token = getUserIdFromCookie(req);
@@ -325,6 +392,70 @@ intRouter.get("/impression", async (req, res) => {
       status: 500,
       success: false,
       message: "Failed to fetch Impression patent IDs",
+      error: error.message,
+    });
+  }
+});
+
+intRouter.get("/all-impressions", async (req, res) => {
+  try {
+    console.log("here");
+    // Extract and validate user token
+    const token = getUserIdFromCookie(req);
+    if (!token) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        message: "User ID not found in cookies",
+      });
+    }
+
+    // Decode the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "squirrelIP");
+    const userId = decoded.userId;
+
+    // Use Promise.all to fetch data concurrently from Wishlist, Enquiry, and Impression
+    const [wishlistedItems, enquiredItems, impressionItems] = await Promise.all(
+      [
+        Wishlist.find({ "from.userId": userId, wishlist: true }).select(
+          "patentDetails.patentId"
+        ),
+        Enquiry.find({ "from.userId": userId, enquire: true }).select(
+          "patentDetails.patentId"
+        ),
+        Impression.find({ "from.userId": userId, impression: true }).select(
+          "patentDetails.patentId"
+        ),
+      ]
+    );
+
+    // Extract patent IDs from results
+    const wishlistedPatentIds = wishlistedItems.map(
+      (item) => item.patentDetails.patentId
+    );
+    const enquiredPatentIds = enquiredItems.map(
+      (item) => item.patentDetails.patentId
+    );
+    const impressionPatentIds = impressionItems.map(
+      (item) => item.patentDetails.patentId
+    );
+
+    // Return combined response
+    return res.status(200).json({
+      status: 200,
+      success: true,
+      message: "User impressions fetched successfully",
+      data: {
+        wishlist: wishlistedPatentIds,
+        enquiry: enquiredPatentIds,
+        impression: impressionPatentIds,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      success: false,
+      message: "Failed to fetch user data",
       error: error.message,
     });
   }
@@ -447,4 +578,67 @@ intRouter.get("/received-impression", async (req, res) => {
   }
 });
 
+intRouter.get("/all-received-impressions", async (req, res) => {
+  try {
+    // Extract and validate user token
+    const token = getUserIdFromCookie(req);
+    if (!token) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        message: "User ID not found in cookies",
+      });
+    }
+
+    // Decode the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "squirrelIP");
+    const userId = decoded.userId;
+
+    // Use Promise.all to fetch data concurrently from Wishlist, Enquiry, and Impression
+    const [wishlistedItems, enquiredItems, impressionItems] = await Promise.all(
+      [
+        Wishlist.find({ "to.userId": userId, wishlist: true }).select(
+          "patentDetails.patentId"
+        ),
+        Enquiry.find({ "to.userId": userId, enquire: true }).select(
+          "patentDetails.patentId"
+        ),
+        Impression.find({ "to.userId": userId, impression: true }).select(
+          "patentDetails.patentId"
+        ),
+      ]
+    );
+
+    // Extract patent IDs from results
+    const wishlistedPatentIds = wishlistedItems.map(
+      (item) => item.patentDetails.patentId
+    );
+    const enquiredPatentIds = enquiredItems.map(
+      (item) => item.patentDetails.patentId
+    );
+    const impressionPatentIds = impressionItems.map(
+      (item) => item.patentDetails.patentId
+    );
+
+    // Return combined response
+    return res.status(200).json({
+      status: 200,
+      success: true,
+      message:
+        "Received data for patents interacted by others fetched successfully",
+      data: {
+        wishlisted: wishlistedPatentIds,
+        enquired: enquiredPatentIds,
+        impressions: impressionPatentIds,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      success: false,
+      message: "Failed to fetch received data",
+      error: error.message,
+    });
+  }
+});
 module.exports = intRouter;

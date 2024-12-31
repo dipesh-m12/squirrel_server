@@ -100,14 +100,15 @@ const patentSchema = new mongoose.Schema(
     transactionType: {
       // New field added
       type: String,
-      enum: ["available", "sold", "both"],
+      // enum: ["available", "sold", "both"],
       required: true, // Change to false if it's optional
       default: "available", //default -- avialable
     },
     patentType: {
       // New field added
       type: String,
-      required: true, // Change to false if it's optional
+      // required: true, // Change to false if it's optional
+      default: "Utility",
     },
     patentImages: {
       type: [String],

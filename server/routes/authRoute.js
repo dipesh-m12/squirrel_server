@@ -30,59 +30,55 @@ authRouter.post("/register", async (req, res) => {
     avatar,
   } = req.body;
 
-  // console.log("Received registration request:", req.body);
-
-  // Generate userId using uuidv4
-  const userId = uuidv4();
-
-  // Hash the password
-  const saltRounds = 10; // You can adjust the salt rounds as needed
-  let hashedPassword;
-
   try {
-    hashedPassword = await bcrypt.hash(password, saltRounds);
-    // console.log(1);
-  } catch (error) {
-    return res.status(500).json({
-      status: 500,
-      success: false,
-      error: true,
-      message: "Password hashing failed",
-      data: error.message,
+    // Check if the email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        error: true,
+        message: "Email is already in use",
+        data: null,
+      });
+    }
+
+    // Generate userId using uuidv4
+    const userId = uuidv4();
+
+    // Hash the password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Create a new user object
+    const newUser = new User({
+      firstName,
+      lastName,
+      mobile,
+      email,
+      country,
+      state,
+      city,
+      pincode,
+      password: hashedPassword,
+      orgLogo,
+      orgName,
+      orgType,
+      orgEmail,
+      orgContact,
+      jobTitle,
+      orgLocation,
+      username,
+      linkedIn,
+      facebook,
+      twitter,
+      avatar,
+      userId,
     });
-  }
 
-  // Create a new user object
-  // console.log(2);
-  const newUser = new User({
-    firstName,
-    lastName,
-    mobile,
-    email,
-    country,
-    state,
-    city,
-    pincode,
-    password: hashedPassword, // Use the hashed password
-    orgLogo,
-    orgName,
-    orgType,
-    orgEmail,
-    orgContact,
-    jobTitle,
-    orgLocation,
-    username,
-    linkedIn,
-    facebook,
-    twitter,
-    avatar,
-    userId,
-  });
-
-  // console.log(3);
-  try {
     // Save the new user to the database
     const savedUser = await newUser.save();
+
     // Create a JWT token
     const token = jwt.sign(
       { userId: savedUser.userId },
@@ -96,9 +92,8 @@ authRouter.post("/register", async (req, res) => {
       secure: true,
       sameSite: "none",
       partitioned: true,
-      // domain: "https://squirrel-server-t2qw.vercel.app",
       maxAge: 6 * 24 * 60 * 60 * 1000,
-    }); // secure: true in production
+    });
 
     // Respond with success
     return res.status(201).json({
@@ -236,9 +231,9 @@ authRouter.post("/logout", (req, res) => {
   // Clear the cookie
   res.clearCookie("token", {
     path: "/",
-    domain: "squirrel-server-t2qw.vercel.app", // Use the same domain if it was set initially
-    sameSite: "None", // Ensure this matches what you set
+    sameSite: "none",
     secure: true,
+    httpOnly: false, // Match the setting cookie config
   }); // Ensure the path matches what was set
   return res.status(200).json({
     status: 200,
