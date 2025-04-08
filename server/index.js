@@ -28,7 +28,7 @@ mongoose
 
 app.use(
   cors({
-    origin: true, // Replace with your specific origin if needed
+    origin: "*", // Replace with your specific origin if needed
     credentials: true,
   })
 );
