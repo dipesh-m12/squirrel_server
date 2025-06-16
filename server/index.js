@@ -1,15 +1,9 @@
 require("dotenv").config();
-
+const cloudinary = require("cloudinary").v2; // Import Cloudinary
 const express = require("express");
 const cors = require("cors");
-
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
-const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const multer = require("multer"); // For handling file uploads
-const fs = require("fs");
-const path = require("path");
 const emailController = require("./controllers/emailController");
-
 const rateLimit = require("express-rate-limit");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
@@ -20,6 +14,13 @@ const patentRouter = require("./routes/patentRoute");
 const intRouter = require("./routes/interactionRoute");
 
 const app = express();
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 mongoose
   .connect(process.env.MONGO_URL)
@@ -57,17 +58,6 @@ app.use("/api/patent", patentRouter);
 app.use("/api/interaction", intRouter);
 
 const upload = multer();
-const AWS_BUCKET_NAME = process.env.AWS_BUCKET_NAME;
-const REGION = process.env.AWS_REGION;
-
-// Create an S3 client with v3 SDK
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-});
 
 app.post("/upload", upload.single("file"), async (req, res) => {
   const file = req.file;
@@ -79,21 +69,26 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   const fileName = `files/${Date.now()}_${file.originalname}`; // Unique file name
 
   try {
-    const uploadParams = {
-      Bucket: "pdf-folders-bucket",
-      Key: fileName,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      // Removed ACL since it is not allowed
-    };
-
-    await s3Client.send(new PutObjectCommand(uploadParams));
-
-    const fileUrl = `https://${uploadParams.Bucket}.s3.${REGION}.amazonaws.com/${fileName}`;
+    // Upload file to Cloudinary
+    const result = await cloudinary.uploader
+      .upload_stream(
+        {
+          folder: "files",
+          public_id: fileName,
+          resource_type: "auto",
+        },
+        (error, result) => {
+          if (error) {
+            throw new Error(error.message);
+          }
+          return result;
+        }
+      )
+      .end(file.buffer);
 
     res.status(200).json({
       message: "File uploaded successfully",
-      fileUrl: fileUrl, // Send back the public URL
+      fileUrl: result.secure_url, // Send back the Cloudinary secure URL
     });
   } catch (err) {
     res.status(500).json({ message: `Failed to upload file: ${err.message}` });

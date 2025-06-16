@@ -151,7 +151,7 @@ intRouter.post("/enquiry", async (req, res) => {
       );
 
       await emailController.sendCustomEmail({
-        to: "Squirreliptech@gmail.com", // Replace with the maintainer's email
+        to: "mavinash422@gmail.com", // Replace with the maintainer's email
         subject: "New Enquiry Raised Regarding Patent",
         body: `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -399,7 +399,6 @@ intRouter.get("/impression", async (req, res) => {
 
 intRouter.get("/all-impressions", async (req, res) => {
   try {
-    console.log("here");
     // Extract and validate user token
     const token = getUserIdFromCookie(req);
     if (!token) {

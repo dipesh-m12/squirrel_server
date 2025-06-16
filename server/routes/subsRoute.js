@@ -58,7 +58,7 @@ subsRouter.post("/", async (req, res) => {
 
       // Send notification email to admin
       await emailController.sendCustomEmail({
-        to: "Squirreliptech@gmail.com",
+        to: "mavinash422@gmail.com",
         subject: "New Subscription Request",
         body: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
